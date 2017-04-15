@@ -167,6 +167,11 @@ var (
 	DefaultRemoteWriteConfig = RemoteWriteConfig{
 		RemoteTimeout: model.Duration(30 * time.Second),
 	}
+
+	// DefaultFlynnSDConfig is the default Flynn SD configuration.
+	DefaultFlynnSDConfig = FlynnSDConfig{
+		Services: []string{"flynn-host", "router-api"},
+	}
 )
 
 // URL is a custom URL type that allows validation at configuration load time.
@@ -446,6 +451,8 @@ type ServiceDiscoveryConfig struct {
 	AzureSDConfigs []*AzureSDConfig `yaml:"azure_sd_configs,omitempty"`
 	// List of Triton service discovery configurations.
 	TritonSDConfigs []*TritonSDConfig `yaml:"triton_sd_configs,omitempty"`
+	// List of Flynn service discovery configurations.
+	FlynnSDConfigs []*FlynnSDConfig `yaml:"flynn_sd_configs,omitempty"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
@@ -1136,6 +1143,30 @@ func (c *TritonSDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		return fmt.Errorf("Triton SD configuration requires RefreshInterval to be a positive integer")
 	}
 	return checkOverflow(c.XXX, "triton_sd_config")
+}
+
+// FlynnSDConfig is the configuration for Flynn service discovery.
+type FlynnSDConfig struct {
+	// The list of services for which targets are discovered.
+	// Defaults to flynn-host and router-api if empty.
+	Services []string `yaml:"services"`
+
+	// Catches all undefined fields and must be empty after parsing.
+	XXX map[string]interface{} `yaml:",inline"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *FlynnSDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	*c = DefaultFlynnSDConfig
+	type plain FlynnSDConfig
+	err := unmarshal((*plain)(c))
+	if err != nil {
+		return err
+	}
+	if len(c.Services) == 0 {
+		return fmt.Errorf("Flynn SD configuration requires at least one service")
+	}
+	return checkOverflow(c.XXX, "flynn_sd_config")
 }
 
 // RelabelAction is the action to be performed on relabeling.
